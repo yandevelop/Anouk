@@ -2,7 +2,7 @@ TARGET := iphone:clang:latest:15.0
 INSTALL_TARGET_PROCESSES = MobileSlideShow tccd
 ARCHS = arm64 arm64e
 FINALPACKAGE = 1
-PACKAGE_VERSION = 1.1
+PACKAGE_VERSION = 1.1.1
 
 THEOS_PACKAGE_SCHEME = rootless
 
