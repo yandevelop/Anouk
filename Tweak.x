@@ -35,7 +35,7 @@
 - (void)setDefaultAllowedIdentifiersList:(NSArray *)list {
     if ([self.name isEqual:@"kTCCServiceFaceID"]) {
         NSMutableArray *tcclist = [list mutableCopy];
-        //[tcclist addObject:@"com.apple.mobileslideshow"];
+        [tcclist addObject:@"com.apple.mobileslideshow"];
         [tcclist addObject:@"com.apple.PhotosUICore"];
         return %orig([tcclist copy]);
     }
