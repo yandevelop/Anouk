@@ -1,12 +1,10 @@
 TARGET := iphone:clang:latest:15.0
 INSTALL_TARGET_PROCESSES = MobileSlideShow tccd
 ARCHS = arm64 arm64e
-THEOS_PACKAGE_SCHEME = rootless
 FINALPACKAGE = 1
-PACKAGE_VERSION = 1.0.1
+PACKAGE_VERSION = 1.1
 
-THEOS_DEVICE_IP = localhost
-THEOS_DEVICE_PORT = 2222
+THEOS_PACKAGE_SCHEME = rootless
 
 export SYSROOT = $(THEOS)/sdks/iPhoneOS15.5.sdk
 
@@ -19,3 +17,5 @@ Anouk_CFLAGS = -fobjc-arc
 Anouk_FRAMEWORKS = UIKit LocalAuthentication
 
 include $(THEOS_MAKE_PATH)/tweak.mk
+SUBPROJECTS += anoukpreferences
+include $(THEOS_MAKE_PATH)/aggregate.mk

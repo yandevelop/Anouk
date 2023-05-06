@@ -1,17 +1,32 @@
 #import "Tweak.h"
 
-NSString *reason = @"Use your passcode to view and manage hidden album.";
+@implementation UIViewController (Anouk)
+- (void)authenticateWithCompletion:(void (^)(BOOL success))completion {
+    LAContext *context = [[LAContext alloc] init];
+    NSError *authError = nil;
 
-BOOL accessed;
-NSString *localizedHiddenLabel = nil;
+    if ([context canEvaluatePolicy:LAPolicyDeviceOwnerAuthentication error:&authError]) {
+        [context evaluatePolicy:LAPolicyDeviceOwnerAuthentication localizedReason:reason reply:^(BOOL success, NSError *error) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                if (success) {
+                    completion(YES);
+                } else {
+                    completion(NO);
+                }
+            });
+        }];
+    } else {
+        completion(NO);
+    }
+}
+@end
 
 %hook NSBundle
 - (NSDictionary *)infoDictionary {
-    NSMutableDictionary *info = [%orig mutableCopy];
-    NSMutableDictionary *mPlist = [info mutableCopy] ?: [NSMutableDictionary dictionary];
-    [mPlist setValue:reason forKey:@"NSFaceIDUsageDescription"];
-    [[NSNotificationCenter defaultCenter] postNotificationName:NSBundleDidLoadNotification object:self];
-    return mPlist.copy;
+    NSDictionary *plist = %orig;
+	NSMutableDictionary *mutablePlist = [plist mutableCopy] ?: [NSMutableDictionary dictionary];
+    [mutablePlist setObject:reason forKey:@"NSFaceIDUsageDescription"];
+	return mutablePlist;
 }
 %end
 
@@ -27,45 +42,32 @@ NSString *localizedHiddenLabel = nil;
 }
 %end
 
-
+%group iPhone
 %hook PXNavigationListGadget
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
-    // Get an instance of the current cell
-    UITableViewCell *cell = [tableView cellForRowAtIndexPath:indexPath];
-    UILabel *label = cell.contentView.subviews[1];
-    NSString *cellLabel = label.text;
+    NSString *cellLabel = [[[(UITableViewCell *)[tableView cellForRowAtIndexPath:indexPath] contentView].subviews[1] valueForKey:@"text"] lowercaseString];
 
-    // Check if the tapped cell is the "Hidden" cell.
-    // There are definetely more reliable or elegant ways to check that (for example with PHFetchResult or similar)
-    if ([cellLabel isEqualToString:localizedHiddenLabel]) {
-        LAContext *context = [[LAContext alloc] init];
-        NSError *authError = nil;
-
-        if ([context canEvaluatePolicy:LAPolicyDeviceOwnerAuthentication error:&authError]) {
-            [context evaluatePolicy:LAPolicyDeviceOwnerAuthentication localizedReason:reason reply:^(BOOL success, NSError *error) {
-                dispatch_async(dispatch_get_main_queue(), ^{
-                    if (success) {
-                        accessed = YES;
-                        %orig;
-                    } else {
-                        [tableView deselectRowAtIndexPath:indexPath animated:YES];
-                    }
-                });
-            }];
-        } else {
-            [tableView deselectRowAtIndexPath:indexPath animated:YES];;
-        }
+    if ([cellLabel isEqualToString:localizedHiddenLabel] || ([cellLabel isEqualToString:recentlyDeletedLabel] && lockRecentlyDeleted)) {
+        [self authenticateWithCompletion:^(BOOL success) {
+            if (success) {
+                accessed = YES;
+                %orig;
+            } else {
+                [tableView deselectRowAtIndexPath:indexPath animated:YES];
+            }
+        }];
     } else {
         %orig;
     }
 }
 %end
 
+
 %hook PUAlbumsGadgetViewController
 // When photos app is being left in background and the hidden album
 // is accessed, it will go back to it's root view controller
 - (void)_applicationDidEnterBackground:(id)arg1 {
-	if (accessed) {
+	if (accessed && popToRoot) {
         UINavigationController *nav = self.navigationController;
         if (nav) {
             accessed = NO;
@@ -76,7 +78,63 @@ NSString *localizedHiddenLabel = nil;
 }
 %end
 
+%hook PXNavigationListItem
+- (id)initWithIdentifier:(id)arg1 title:(id)arg2 itemCount:(long long)arg3{
+    if ([[arg2 lowercaseString] containsString:localizedHiddenLabel] && hiddenItemCountEnabled){
+        return %orig(arg1,arg2,hiddenItemCount);
+    } else {
+        return %orig;
+    }
+}
+%end
+%end
+
+%group iPad
+%hook PUSidebarViewController
+- (void)collectionView:(UICollectionView *)collectionView didSelectItemAtIndexPath:(NSIndexPath *)indexPath {
+    NSString *cellLabel = [[[(UICollectionViewCell *)[collectionView cellForItemAtIndexPath:indexPath] contentView].subviews[1] valueForKey:@"text"] lowercaseString];
+
+    if ([cellLabel isEqualToString:localizedHiddenLabel] || ([cellLabel isEqualToString:recentlyDeletedLabel] && lockRecentlyDeleted)) {
+        [self authenticateWithCompletion:^(BOOL success) {
+            if (success) {
+                %orig;
+            } else {
+                [collectionView deselectItemAtIndexPath:indexPath animated:YES];
+            }
+        }];
+    } else {
+        %orig;
+    }
+}
+%end
+%end
+
+static void loadPreferences(CFNotificationCenterRef center, void *observer, CFStringRef name, const void *object, CFDictionaryRef userInfo) {
+    NSNumber *enabledValue = (NSNumber *)[[NSUserDefaults standardUserDefaults] objectForKey:@"enabled" inDomain:domain];
+    enabled = (enabledValue) ? [enabledValue boolValue] : NO;
+    NSNumber *lockRecentlyDeletedValue = (NSNumber *)[[NSUserDefaults standardUserDefaults] objectForKey:@"lockRecentlyDeleted" inDomain:domain];
+    lockRecentlyDeleted = (lockRecentlyDeletedValue) ? [lockRecentlyDeletedValue boolValue] : NO;
+    NSNumber *popToRootValue = (NSNumber *)[[NSUserDefaults standardUserDefaults] objectForKey:@"popToRoot" inDomain:domain];
+    popToRoot = (popToRootValue) ? [popToRootValue boolValue] : NO;
+    hiddenItemCount = [[[NSUserDefaults standardUserDefaults] objectForKey:@"hiddenItemCount" inDomain:domain] longLongValue];
+    NSNumber *hiddenItemCountEnabledValue = (NSNumber *)[[NSUserDefaults standardUserDefaults] objectForKey:@"hiddenItemCountEnabled" inDomain:domain];
+    hiddenItemCountEnabled = (hiddenItemCountEnabledValue) ? [hiddenItemCountEnabledValue boolValue] : NO;
+}
+
 %ctor {
+    loadPreferences(NULL, NULL, NULL, NULL, NULL);
+    CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), NULL, loadPreferences, (CFStringRef)preferencesNotification, NULL, CFNotificationSuspensionBehaviorCoalesce); // Preferences changed
+    
+    if (!enabled) return;
+
     NSBundle *bundle = [NSBundle bundleWithIdentifier:@"com.apple.PhotoLibraryServices"];
-    localizedHiddenLabel = [bundle localizedStringForKey:@"ALL_HIDDEN" value:@"" table:@"PhotoLibraryServices"];
+    localizedHiddenLabel = ([[bundle localizedStringForKey:@"ALL_HIDDEN" value:@"" table:@"PhotoLibraryServices"] lowercaseString]);
+    recentlyDeletedLabel = ([[bundle localizedStringForKey:@"ALL_TRASH_BIN" value:@"" table:@"PhotoLibraryServices"] lowercaseString]);
+
+    if ([[[UIDevice currentDevice] model] containsString:@"iPad"]) {
+        %init(iPad);
+    } else {
+        %init(iPhone);
+    }
+    %init();
 }
