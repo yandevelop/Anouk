@@ -4,7 +4,7 @@ ARCHS = arm64 arm64e
 FINALPACKAGE = 1
 PACKAGE_VERSION = 1.1.1
 
-THEOS_PACKAGE_SCHEME = rootless
+THEOS_PACKAGE_SCHEME ?= rootless
 
 export SYSROOT = $(THEOS)/sdks/iPhoneOS15.5.sdk
 

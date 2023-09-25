@@ -2,10 +2,11 @@
 #import "ANPRootListController.h"
 #import "spawn.h"
 #import <rootless.h>
+#import <roothide.h>
 
-#define kAnoukPreferencesPath ROOT_PATH_NS(@"/var/mobile/Library/Preferences/com.yan.anoukpreferences.plist")
-#define kAnoukIconPath ROOT_PATH_NS(@"/Library/PreferenceBundles/AnoukPreferences.bundle/anouk.png")
-#define kPosixPath ROOT_PATH_NS(@"/usr/bin/killall")
+#define kAnoukPreferencesPath jbroot(ROOT_PATH_NS(@"/var/mobile/Library/Preferences/com.yan.anoukpreferences.plist"))
+#define kAnoukIconPath jbroot(ROOT_PATH_NS(@"/Library/PreferenceBundles/AnoukPreferences.bundle/anouk.png"))
+#define kPosixPath jbroot(ROOT_PATH_NS(@"/usr/bin/killall"))
 
 static NSString *domain = @"com.yan.anoukpreferences";
 
