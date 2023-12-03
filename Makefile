@@ -2,13 +2,11 @@ TARGET := iphone:clang:latest:15.0
 INSTALL_TARGET_PROCESSES = MobileSlideShow tccd
 ARCHS = arm64 arm64e
 FINALPACKAGE = 1
-PACKAGE_VERSION = 1.1.1
-
-THEOS_PACKAGE_SCHEME = rootless
-
-export SYSROOT = $(THEOS)/sdks/iPhoneOS15.5.sdk
+PACKAGE_VERSION = 1.2
 
 include $(THEOS)/makefiles/common.mk
+
+THEOS_PACKAGE_SCHEME = rootless
 
 TWEAK_NAME = Anouk
 

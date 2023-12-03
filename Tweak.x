@@ -30,7 +30,7 @@
 }
 %end
 
-// Credits to https://github.com/jacobcxdev/iDunnoU/blob/648e27a564b42df45c0ed77dc5d1609baedc98ef/Tweak.x
+%group AllowFaceId
 %hook TCCDService
 - (void)setDefaultAllowedIdentifiersList:(NSArray *)list {
     if ([self.name isEqual:@"kTCCServiceFaceID"]) {
@@ -42,27 +42,29 @@
     return %orig;
 }
 %end
+%end
 
 %group iPhone
 %hook PXNavigationListGadget
-- (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
-    NSString *cellLabel = [[[(UITableViewCell *)[tableView cellForRowAtIndexPath:indexPath] contentView].subviews[1] valueForKey:@"text"] lowercaseString];
+-(id)_navigateTolistItem:(PXNavigationListAssetCollectionItem *)item animated:(BOOL)animated {
+	PHAssetCollection *collection = (PHAssetCollection *)item.collection;
 
-    if ([cellLabel isEqualToString:localizedHiddenLabel] || ([cellLabel isEqualToString:recentlyDeletedLabel] && lockRecentlyDeleted)) {
+    id __block orig = nil;
+
+    if ([collection px_isHiddenSmartAlbum] || ([collection px_isRecentlyDeletedSmartAlbum] && lockRecentlyDeleted)) {
         [self authenticateWithCompletion:^(BOOL success) {
             if (success) {
                 accessed = YES;
-                %orig;
-            } else {
-                [tableView deselectRowAtIndexPath:indexPath animated:YES];
+                orig = %orig;
             }
         }];
     } else {
-        %orig;
+       orig = %orig;
     }
+    
+    return orig;
 }
 %end
-
 
 %hook PUAlbumsGadgetViewController
 // When photos app is being left in background and the hidden album
@@ -78,29 +80,97 @@
     %orig;
 }
 %end
+%end
 
-%hook PXNavigationListItem
-- (id)initWithIdentifier:(id)arg1 title:(id)arg2 itemCount:(long long)arg3{
-    if ([[arg2 lowercaseString] containsString:localizedHiddenLabel] && hiddenItemCountEnabled){
-        return %orig(arg1,arg2,hiddenItemCount);
+%hook PUHorizontalAlbumListGadget
+-(void)_navigateToCollection:(PHAssetCollection *)collection animated:(BOOL)animated interactive:(BOOL)interactive completion:(id)completion {
+    if ([collection px_isHiddenSmartAlbum] || ([collection px_isRecentlyDeletedSmartAlbum] && lockRecentlyDeleted)) {
+        [self authenticateWithCompletion:^(BOOL success) {
+            if (success) {
+                accessed = YES;
+                %orig;
+            }
+        }];
     } else {
-        return %orig;
+       %orig;
     }
+}
+%end
+
+%hook PUAlbumListViewController
+-(void)navigateToCollection:(PHAssetCollection *)collection animated:(BOOL)animated completion:(id)completion {
+    if ([collection px_isHiddenSmartAlbum] || ([collection px_isRecentlyDeletedSmartAlbum] && lockRecentlyDeleted)) {
+        [self authenticateWithCompletion:^(BOOL success) {
+            if (success) {
+                accessed = YES;
+                %orig;
+            }
+        }];
+    } else {
+       %orig;
+    }
+}
+%end
+
+%group NewItemCount
+%hook PXNavigationListGadget
+- (void)_configureCell:(PXNavigationListCell *)cell forListItem:(PXNavigationListAssetCollectionItem *)item textColor:(id)color {
+	%orig;
+
+	PHAssetCollection *collection = (PHAssetCollection *)item.collection;
+
+    if ([collection px_isHiddenSmartAlbum] && (hiddenItemCountEnabled || showLockIcon)) {
+        NSAttributedString *attachmentString;
+        if (showLockIcon) {
+            NSTextAttachment *attachment = [[NSTextAttachment alloc] init];
+            attachment.image = [UIImage systemImageNamed:@"lock.fill"];
+            attachment.image = [attachment.image imageWithTintColor:UIColor.systemGrayColor];
+            attachmentString = [NSAttributedString attributedStringWithAttachment:attachment];
+        } else if (hiddenItemCountEnabled) {
+            NSString *itemCount = [NSString stringWithFormat:@"%ld", (long)hiddenItemCount];
+            attachmentString = [[NSAttributedString alloc] initWithString:itemCount];
+        }
+
+        _UITableViewCellBadge *badge = [cell valueForKey:@"badge"];
+        UILabel *badgeLabel = badge.badgeTextLabel;
+        badgeLabel.attributedText = attachmentString;
+    } else if ([collection px_isRecentlyDeletedSmartAlbum] && lockRecentlyDeleted && showLockIcon) {
+        NSTextAttachment *attachment = [[NSTextAttachment alloc] init];
+        attachment.image = [UIImage systemImageNamed:@"lock.fill"];
+        attachment.image = [attachment.image imageWithTintColor:UIColor.systemGrayColor];
+        NSAttributedString *attachmentString = [NSAttributedString attributedStringWithAttachment:attachment];
+
+        _UITableViewCellBadge *badge = [cell valueForKey:@"badge"];
+        UILabel *badgeLabel = badge.badgeTextLabel;
+        badgeLabel.attributedText = attachmentString;
+    } 
 }
 %end
 %end
 
+%group LegacyItemCount
+%hook PXNavigationListAssetCollectionItem
+- (PXNavigationListAssetCollectionItem *)initWithAssetCollection:(PHAssetCollection *)collection itemCount:(NSInteger)arg2 {
+    if ([collection px_isHiddenSmartAlbum] && hiddenItemCountEnabled) {
+        arg2 = hiddenItemCount;
+        return %orig(collection, arg2);
+    }
+
+    return %orig;
+}
+%end
+%end
+
+// iPad
 %group iPad
 %hook PUSidebarViewController
-- (void)collectionView:(UICollectionView *)collectionView didSelectItemAtIndexPath:(NSIndexPath *)indexPath {
-    NSString *cellLabel = [[[(UICollectionViewCell *)[collectionView cellForItemAtIndexPath:indexPath] contentView].subviews[1] valueForKey:@"text"] lowercaseString];
-
-    if ([cellLabel isEqualToString:localizedHiddenLabel] || ([cellLabel isEqualToString:recentlyDeletedLabel] && lockRecentlyDeleted)) {
+- (void)_navigateToDestinationForItem:(PXNavigationListAssetCollectionItem *)item sameItem:(BOOL)arg2 completionHandler:(id)arg3 {
+    PHAssetCollection *collection = (PHAssetCollection *)item.collection;
+    if ([collection px_isHiddenSmartAlbum] || ([collection px_isRecentlyDeletedSmartAlbum] && lockRecentlyDeleted)) {
         [self authenticateWithCompletion:^(BOOL success) {
             if (success) {
+                accessed = YES;
                 %orig;
-            } else {
-                [collectionView deselectItemAtIndexPath:indexPath animated:YES];
             }
         }];
     } else {
@@ -111,31 +181,46 @@
 %end
 
 static void loadPreferences(CFNotificationCenterRef center, void *observer, CFStringRef name, const void *object, CFDictionaryRef userInfo) {
-    NSNumber *enabledValue = (NSNumber *)[[NSUserDefaults standardUserDefaults] objectForKey:@"enabled" inDomain:domain];
-    enabled = (enabledValue) ? [enabledValue boolValue] : NO;
-    NSNumber *lockRecentlyDeletedValue = (NSNumber *)[[NSUserDefaults standardUserDefaults] objectForKey:@"lockRecentlyDeleted" inDomain:domain];
-    lockRecentlyDeleted = (lockRecentlyDeletedValue) ? [lockRecentlyDeletedValue boolValue] : NO;
-    NSNumber *popToRootValue = (NSNumber *)[[NSUserDefaults standardUserDefaults] objectForKey:@"popToRoot" inDomain:domain];
-    popToRoot = (popToRootValue) ? [popToRootValue boolValue] : NO;
-    hiddenItemCount = [[[NSUserDefaults standardUserDefaults] objectForKey:@"hiddenItemCount" inDomain:domain] longLongValue];
-    NSNumber *hiddenItemCountEnabledValue = (NSNumber *)[[NSUserDefaults standardUserDefaults] objectForKey:@"hiddenItemCountEnabled" inDomain:domain];
-    hiddenItemCountEnabled = (hiddenItemCountEnabledValue) ? [hiddenItemCountEnabledValue boolValue] : NO;
+    NSFileManager *fileManager = [NSFileManager defaultManager];
+    if ([fileManager fileExistsAtPath:ROOT_PATH_NS(@"/var/mobile/Library/Preferences/com.yan.anoukpreferences.plist")]) {
+        NSDictionary *preferences = [NSDictionary dictionaryWithContentsOfFile:ROOT_PATH_NS(@"/var/mobile/Library/Preferences/com.yan.anoukpreferences.plist")];
+        
+        lockRecentlyDeleted = [preferences[@"lockRecentlyDeleted"] boolValue];
+        popToRoot = [preferences[@"popToRoot"] boolValue];
+        hiddenItemCountEnabled = [preferences[@"hiddenItemCountEnabled"] boolValue];
+        showLockIcon = [preferences[@"showLockIcon"] boolValue];
+        hiddenItemCount = [preferences[@"hiddenItemCount"] longLongValue];
+    }
+}
+
+static bool isEnabled() {
+    NSFileManager *fileManager = [NSFileManager defaultManager];
+    if ([fileManager fileExistsAtPath:ROOT_PATH_NS(@"/var/mobile/Library/Preferences/com.yan.anoukpreferences.plist")]) {
+        NSDictionary *preferences = [NSDictionary dictionaryWithContentsOfFile:ROOT_PATH_NS(@"/var/mobile/Library/Preferences/com.yan.anoukpreferences.plist")];
+        return [preferences[@"enabled"] boolValue];
+    }
+
+    return NO;
 }
 
 %ctor {
+    if (!isEnabled() || [[[NSBundle mainBundle] bundleIdentifier] isEqual:@"com.apple.fitecored"]) return;
+
+    if ([[[NSBundle mainBundle] bundleIdentifier] isEqual:@"com.apple.mobileslideshow"]) %init(AllowFaceId);
+
     loadPreferences(NULL, NULL, NULL, NULL, NULL);
-    CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), NULL, loadPreferences, (CFStringRef)preferencesNotification, NULL, CFNotificationSuspensionBehaviorCoalesce); // Preferences changed
+    CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), NULL, loadPreferences, (CFStringRef)preferencesNotification, NULL, CFNotificationSuspensionBehaviorCoalesce);
     
-    if (!enabled) return;
-
-    NSBundle *bundle = [NSBundle bundleWithIdentifier:@"com.apple.PhotoLibraryServices"];
-    localizedHiddenLabel = ([[bundle localizedStringForKey:@"ALL_HIDDEN" value:@"" table:@"PhotoLibraryServices"] lowercaseString]);
-    recentlyDeletedLabel = ([[bundle localizedStringForKey:@"ALL_TRASH_BIN" value:@"" table:@"PhotoLibraryServices"] lowercaseString]);
-
     if ([[[UIDevice currentDevice] model] containsString:@"iPad"]) {
         %init(iPad);
     } else {
         %init(iPhone);
+
+        if ([UIDevice currentDevice].systemVersion.floatValue >= 15.0) {
+            %init(NewItemCount);
+        } else {
+            %init(LegacyItemCount);
+        }
     }
-    %init();
+    %init(_ungrouped);
 }

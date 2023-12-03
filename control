@@ -1,6 +1,6 @@
 Package: com.yan.anouk
 Name: Anouk
-Version: 1.1.1
+Version: 1.2
 Architecture: iphoneos-arm64
 Description: Authentication for the hidden album.
 Maintainer: yan

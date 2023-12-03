@@ -1,5 +1,7 @@
 #import <Preferences/PSListController.h>
 #import <Preferences/PSSpecifier.h>
+#import "spawn.h"
+#import <rootless.h>
 
 @interface ANPRootListController : PSListController
 @property(nonatomic, retain) UIView *headerView;
@@ -8,8 +10,6 @@
 @property(nonatomic, retain) UILabel *titleLabel;
 @property(nonatomic, retain) UIImageView *headerImageView;
 @property(nonatomic, retain) UIImageView *iconView;
-- (void)enableSwitchChanged;
-- (void)setEnabledState;
 @end
 
 @interface NSUserDefaults (Anouk)

@@ -34,16 +34,16 @@ static NSString *domain = @"com.yan.anoukpreferences";
 		self.titleLabel.textAlignment = NSTextAlignmentCenter;
 		[self.navigationItem.titleView addSubview:self.titleLabel];
 
-		self.headerView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 200, 200)];
-		self.headerImageView = [[UIImageView alloc] initWithFrame:CGRectMake(0, 0, 200, 200)];
+		self.headerView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 200, 150)];
+		self.headerImageView = [[UIImageView alloc] initWithFrame:CGRectMake(0, 0, 200, 150)];
 		self.headerImageView.image = [UIImage imageWithContentsOfFile:kAnoukIconPath];
 		self.headerImageView.translatesAutoresizingMaskIntoConstraints = NO;		
 		self.headerImageView.contentMode = UIViewContentModeScaleAspectFit;
 
-		self.headerImageView.layer.shadowColor = [UIColor blackColor].CGColor;
+		self.headerImageView.layer.shadowColor = [UIColor labelColor].CGColor;
 		self.headerImageView.layer.shadowOffset = CGSizeZero;
-		self.headerImageView.layer.shadowOpacity = 0.4;
-		self.headerImageView.layer.shadowRadius = 12;
+		self.headerImageView.layer.shadowOpacity = 0.3;
+		self.headerImageView.layer.shadowRadius = 10;
 
 		[self.headerView addSubview:self.headerImageView];
 
@@ -55,7 +55,7 @@ static NSString *domain = @"com.yan.anoukpreferences";
 			[self.headerImageView.widthAnchor constraintEqualToConstant:125],
 			[self.headerImageView.heightAnchor constraintEqualToConstant:125],
 			[self.headerImageView.centerXAnchor constraintEqualToAnchor:self.headerView.centerXAnchor],
-			[self.headerImageView.centerYAnchor constraintEqualToAnchor:self.headerView.centerYAnchor]
+			[self.headerImageView.centerYAnchor constraintEqualToAnchor:self.headerView.centerYAnchor],
 		]];
 	}
 
@@ -88,10 +88,12 @@ static NSString *domain = @"com.yan.anoukpreferences";
 }
 
 - (void)killPhotos {
-	const char *path = [kPosixPath UTF8String];
-	pid_t pid;
-	const char* args[] = {"killall", "-9", "MobileSlideShow", NULL, NULL};
-	posix_spawn(&pid, path, NULL, NULL, (char* const*)args, NULL);
+	dispatch_async(dispatch_get_main_queue(), ^{
+		const char *path = [kPosixPath UTF8String];
+		pid_t pid;
+		const char* args[] = {"killall", "-9", "MobileSlideShow", NULL, NULL};
+		posix_spawn(&pid, path, NULL, NULL, (char* const*)args, NULL);
+	});
 }
 
 
