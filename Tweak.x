@@ -21,6 +21,7 @@
 }
 @end
 
+%group AllowFaceId
 %hook NSBundle
 - (NSDictionary *)infoDictionary {
     NSDictionary *plist = %orig;
@@ -29,24 +30,11 @@
 	return mutablePlist;
 }
 %end
-
-%group AllowFaceId
-%hook TCCDService
-- (void)setDefaultAllowedIdentifiersList:(NSArray *)list {
-    if ([self.name isEqual:@"kTCCServiceFaceID"]) {
-        NSMutableArray *tcclist = [list mutableCopy];
-        [tcclist addObject:@"com.apple.mobileslideshow"];
-        [tcclist addObject:@"com.apple.PhotosUICore"];
-        return %orig([tcclist copy]);
-    }
-    return %orig;
-}
-%end
 %end
 
 %group iPhone
 %hook PXNavigationListGadget
--(id)_navigateTolistItem:(PXNavigationListAssetCollectionItem *)item animated:(BOOL)animated {
+- (id)_navigateTolistItem:(PXNavigationListAssetCollectionItem *)item animated:(BOOL)animated {
 	PHAssetCollection *collection = (PHAssetCollection *)item.collection;
 
     id __block orig = nil;
@@ -82,23 +70,22 @@
 %end
 %end
 
-%hook PUHorizontalAlbumListGadget
--(void)_navigateToCollection:(PHAssetCollection *)collection animated:(BOOL)animated interactive:(BOOL)interactive completion:(id)completion {
-    if ([collection px_isHiddenSmartAlbum] || ([collection px_isRecentlyDeletedSmartAlbum] && lockRecentlyDeleted)) {
-        [self authenticateWithCompletion:^(BOOL success) {
-            if (success) {
-                accessed = YES;
-                %orig;
-            }
-        }];
-    } else {
-       %orig;
+%hook TCCDService
+- (void)setDefaultAllowedIdentifiersList:(NSArray *)list {
+    if ([self.name isEqual:@"kTCCServiceFaceID"]) {
+        NSMutableArray *tcclist = [list mutableCopy];
+        [tcclist addObject:@"com.apple.mobileslideshow"];
+        [tcclist addObject:@"com.apple.PhotosUICore"];
+        return %orig([tcclist copy]);
     }
+    return %orig;
 }
 %end
 
-%hook PUAlbumListViewController
--(void)navigateToCollection:(PHAssetCollection *)collection animated:(BOOL)animated completion:(id)completion {
+%group iPad
+%hook PUSidebarViewController
+- (void)_navigateToDestinationForItem:(PXNavigationListAssetCollectionItem *)item sameItem:(BOOL)arg2 completionHandler:(id)arg3 {
+    PHAssetCollection *collection = (PHAssetCollection *)item.collection;
     if ([collection px_isHiddenSmartAlbum] || ([collection px_isRecentlyDeletedSmartAlbum] && lockRecentlyDeleted)) {
         [self authenticateWithCompletion:^(BOOL success) {
             if (success) {
@@ -107,9 +94,10 @@
             }
         }];
     } else {
-       %orig;
+        %orig;
     }
 }
+%end
 %end
 
 %group NewItemCount
@@ -161,25 +149,6 @@
 %end
 %end
 
-// iPad
-%group iPad
-%hook PUSidebarViewController
-- (void)_navigateToDestinationForItem:(PXNavigationListAssetCollectionItem *)item sameItem:(BOOL)arg2 completionHandler:(id)arg3 {
-    PHAssetCollection *collection = (PHAssetCollection *)item.collection;
-    if ([collection px_isHiddenSmartAlbum] || ([collection px_isRecentlyDeletedSmartAlbum] && lockRecentlyDeleted)) {
-        [self authenticateWithCompletion:^(BOOL success) {
-            if (success) {
-                accessed = YES;
-                %orig;
-            }
-        }];
-    } else {
-        %orig;
-    }
-}
-%end
-%end
-
 static void loadPreferences(CFNotificationCenterRef center, void *observer, CFStringRef name, const void *object, CFDictionaryRef userInfo) {
     NSFileManager *fileManager = [NSFileManager defaultManager];
     if ([fileManager fileExistsAtPath:ROOT_PATH_NS(@"/var/mobile/Library/Preferences/com.yan.anoukpreferences.plist")]) {
@@ -203,24 +172,25 @@ static bool isEnabled() {
     return NO;
 }
 
-%ctor {
-    if (!isEnabled() || [[[NSBundle mainBundle] bundleIdentifier] isEqual:@"com.apple.fitecored"]) return;
 
-    if ([[[NSBundle mainBundle] bundleIdentifier] isEqual:@"com.apple.mobileslideshow"]) %init(AllowFaceId);
+%ctor {
+    if (!isEnabled()) return;
 
     loadPreferences(NULL, NULL, NULL, NULL, NULL);
     CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), NULL, loadPreferences, (CFStringRef)preferencesNotification, NULL, CFNotificationSuspensionBehaviorCoalesce);
+
+    if ([[[NSBundle mainBundle] bundleIdentifier] isEqual:@"com.apple.mobileslideshow"]) %init(AllowFaceId);
+
+    %init(_ungrouped);
     
     if ([[[UIDevice currentDevice] model] containsString:@"iPad"]) {
         %init(iPad);
     } else {
         %init(iPhone);
-
         if ([UIDevice currentDevice].systemVersion.floatValue >= 15.0) {
             %init(NewItemCount);
         } else {
             %init(LegacyItemCount);
         }
     }
-    %init(_ungrouped);
 }

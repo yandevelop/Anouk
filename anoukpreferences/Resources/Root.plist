@@ -36,7 +36,7 @@
 			<key>key</key>
 			<string>hiddenItemCount</string>
 			<key>label</key>
-			<string>Photo count</string>
+			<string>Item count</string>
 			<key>isNumeric</key>
 			<true/>
 			<key>placeholder</key>
