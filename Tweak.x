@@ -5,8 +5,12 @@
     LAContext *context = [[LAContext alloc] init];
     NSError *authError = nil;
 
-    if ([context canEvaluatePolicy:LAPolicyDeviceOwnerAuthentication error:&authError]) {
-        [context evaluatePolicy:LAPolicyDeviceOwnerAuthentication localizedReason:reason reply:^(BOOL success, NSError *error) {
+    if (policy == LAPolicyDeviceOwnerAuthenticationWithBiometrics) {
+        context.localizedFallbackTitle = @""; // Hide the "Enter password" button when using Face ID
+    }
+
+    if ([context canEvaluatePolicy:policy error:&authError]) {
+        [context evaluatePolicy:policy localizedReason:reason reply:^(BOOL success, NSError *error) {
             dispatch_async(dispatch_get_main_queue(), ^{
                 if (success) {
                     completion(YES);
@@ -39,7 +43,7 @@
 
     id __block orig = nil;
 
-    if ([collection px_isHiddenSmartAlbum] || ([collection px_isRecentlyDeletedSmartAlbum] && lockRecentlyDeleted)) {
+    if (([collection px_isHiddenSmartAlbum] && lockHiddenAlbum) || ([collection px_isRecentlyDeletedSmartAlbum] && lockRecentlyDeleted)) {
         [self authenticateWithCompletion:^(BOOL success) {
             if (success) {
                 accessed = YES;
@@ -86,7 +90,7 @@
 %hook PUSidebarViewController
 - (void)_navigateToDestinationForItem:(PXNavigationListAssetCollectionItem *)item sameItem:(BOOL)arg2 completionHandler:(id)arg3 {
     PHAssetCollection *collection = (PHAssetCollection *)item.collection;
-    if ([collection px_isHiddenSmartAlbum] || ([collection px_isRecentlyDeletedSmartAlbum] && lockRecentlyDeleted)) {
+    if (([collection px_isHiddenSmartAlbum] && lockHiddenAlbum) || ([collection px_isRecentlyDeletedSmartAlbum] && lockRecentlyDeleted)) {
         [self authenticateWithCompletion:^(BOOL success) {
             if (success) {
                 accessed = YES;
@@ -155,10 +159,12 @@ static void loadPreferences(CFNotificationCenterRef center, void *observer, CFSt
         NSDictionary *preferences = [NSDictionary dictionaryWithContentsOfFile:ROOT_PATH_NS(@"/var/mobile/Library/Preferences/com.yan.anoukpreferences.plist")];
         
         lockRecentlyDeleted = [preferences[@"lockRecentlyDeleted"] boolValue];
+        lockHiddenAlbum = preferences[@"lockHiddenAlbum"] ? [preferences[@"lockHiddenAlbum"] boolValue] : YES;
         popToRoot = [preferences[@"popToRoot"] boolValue];
         hiddenItemCountEnabled = [preferences[@"hiddenItemCountEnabled"] boolValue];
         showLockIcon = [preferences[@"showLockIcon"] boolValue];
         hiddenItemCount = [preferences[@"hiddenItemCount"] longLongValue];
+        policy = [preferences[@"policy"] boolValue] ? LAPolicyDeviceOwnerAuthenticationWithBiometrics : LAPolicyDeviceOwnerAuthentication;
     }
 }
 
@@ -172,8 +178,18 @@ static bool isEnabled() {
     return NO;
 }
 
+static bool shouldInject() {
+    NSString *currentProcessName = [[NSProcessInfo processInfo] processName];
+    NSArray *excludedProcesses = @[@"fitcored", @"finhealthxpcservices", @"coreidvd", @"remindd", @"translationd", @"fmfd"];
+
+    if ([excludedProcesses containsObject:[currentProcessName lowercaseString]]) {
+        return NO;
+    }
+    return YES;
+}
 
 %ctor {
+    if (!shouldInject()) return;
     if (!isEnabled()) return;
 
     loadPreferences(NULL, NULL, NULL, NULL, NULL);

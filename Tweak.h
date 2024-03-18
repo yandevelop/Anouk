@@ -6,7 +6,7 @@
 #define NSLog(args...) NSLog(@"[Anouk] "args)
 
 static NSString *preferencesNotification = @"com.yan.anoukpreferences/changed";
-NSString *reason = @"Use your passcode to view and manage hidden album.";
+static NSString *reason = @"Use your passcode to view and manage hidden album.";
 
 BOOL accessed;
 
@@ -14,7 +14,10 @@ BOOL lockRecentlyDeleted;
 BOOL popToRoot;
 BOOL hiddenItemCountEnabled;
 BOOL showLockIcon;
+BOOL lockHiddenAlbum;
 NSInteger hiddenItemCount;
+
+LAPolicy policy;
 
 @interface TCCDService : NSObject
 @property (retain, nonatomic) NSString *name;

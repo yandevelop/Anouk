@@ -14,6 +14,18 @@
 			<key>cell</key>
 			<string>PSSwitchCell</string>
 			<key>default</key>
+			<true/>
+			<key>defaults</key>
+			<string>com.yan.anoukpreferences</string>
+			<key>key</key>
+			<string>lockHiddenAlbum</string>
+			<key>label</key>
+			<string>Hidden</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSSwitchCell</string>
+			<key>default</key>
 			<false/>
 			<key>defaults</key>
 			<string>com.yan.anoukpreferences</string>
@@ -83,6 +95,22 @@
 			<string>popToRoot</string>
 			<key>label</key>
 			<string>Dismiss if left open</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSSwitchCell</string>
+			<key>default</key>
+			<false/>
+			<key>defaults</key>
+			<string>com.yan.anoukpreferences</string>
+			<key>key</key>
+			<string>policy</string>
+			<key>label</key>
+			<string>Only unlock with FaceID</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
 		</dict>
 		<dict>
 			<key>cell</key>

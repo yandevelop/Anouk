@@ -1,12 +1,7 @@
 TARGET := iphone:clang:latest:14.0
-INSTALL_TARGET_PROCESSES = MobileSlideShow tccd SpringBoard
+INSTALL_TARGET_PROCESSES = MobileSlideShow tccd
 ARCHS = arm64 arm64e
 FINALPACKAGE = 1
-PACKAGE_VERSION = 1.2
-
-THEOS_PACKAGE_SCHEME = rootless
-
-THEOS_DEVICE_IP = 192.168.178.20
 
 include $(THEOS)/makefiles/common.mk
 

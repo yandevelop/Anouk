@@ -1,7 +1,5 @@
 #import <Foundation/Foundation.h>
 #import "ANPRootListController.h"
-#import "spawn.h"
-#import <rootless.h>
 
 #define kAnoukPreferencesPath ROOT_PATH_NS(@"/var/mobile/Library/Preferences/com.yan.anoukpreferences.plist")
 #define kAnoukIconPath ROOT_PATH_NS(@"/Library/PreferenceBundles/AnoukPreferences.bundle/anouk.png")
