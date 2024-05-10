@@ -1,6 +1,3 @@
 .theos/
 packages/
 .DS_Store
-Versions/
-cr.sh
-create-release.sh
